@@ -60,6 +60,6 @@ func main() {
 			fmt.Printf("failed to fetch %q: %v\n", result.url, result.err)
 			continue
 		}
-		fmt.Printf("%s has length %d\n", result.url, result.readLength)
+        fmt.Printf("%s has a response of length: %d\n", result.url, result.readLength)
 	}
 }
