@@ -14,6 +14,9 @@ import (
 )
 
 const (
+    serverRunningTime = 3 * time.Second
+	serverShutdownTime = 200 * time.Millisecond
+    
 	basePath = "/v1/demo"
     serverShutdownTime = 10 * time.Second
 )
@@ -32,7 +35,7 @@ func writeAndLog(w http.ResponseWriter, req *http.Request, status int, err error
 	w.WriteHeader(status)
 }
 
-func NewHttpHandler(ctx context.Context) http.Handler {
+func NewHttpHandler() http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc(basePath + "/", func(w http.ResponseWriter, req *http.Request) {
@@ -56,12 +59,8 @@ func NewHttpHandler(ctx context.Context) http.Handler {
 			return
 		}
 
-		w.WriteHeader(http.StatusOK)
 		_, err = w.Write(body)
-		if err != nil {
-			writeAndLog(w, req, http.StatusInternalServerError, err)
-			return
-		}
+		writeAndLog(w, req, http.StatusInternalServerError, err)
 	})
 
 	return mux
@@ -69,7 +68,7 @@ func NewHttpHandler(ctx context.Context) http.Handler {
 
 func getInterruptableCtx(ctx context.Context) (context.Context, context.CancelFunc) {
 	var cancel context.CancelFunc
-	ctx, cancel = context.WithCancel(ctx)
+	ctx, cancel = context.WithTimeout(ctx, serverRunningTime)
 
 	// detect and cancel on SIGINT or SIGTERM
 	go func() {
@@ -96,6 +95,7 @@ func interruptableServe(parentCtx context.Context, listener net.Listener, server
 
 		if err := server.Shutdown(shutdownCtx); err != nil {
 			fmt.Printf("Failed to shutdown the server: %v\n", err)
+			return
 		}
 	}()
 
@@ -106,7 +106,22 @@ func main() {
 	ctx, cancel := getInterruptableCtx(context.Background())
 	defer cancel()
 
-	handler := http_server.NewHttpHandler(ctx)
+	go func(ctx context.Context) {
+		go func() {
+			i := 0
+			for {
+				fmt.Println(i)
+				time.Sleep(1 * time.Second)
+				i++
+			}
+		}()
+
+		select {
+		case <-ctx.Done():
+		}
+	}(ctx)
+
+	handler := http_server.NewHttpHandler()
 	server := http.Server{
 		Handler: handler,
 	}
@@ -114,13 +129,13 @@ func main() {
 	addr := "localhost:4443"
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		fmt.Printf("Failed to create a listener on %s\n", addr)
+		fmt.Printf("Failed to create a listener on %s. error: %v\n", addr, err)
 		return
 	}
 
 	err = interruptableServe(ctx, listener, &server)
 	if err != nil {
-		fmt.Printf("Failed to serve on %s\n", addr)
+		fmt.Printf("Failed to serve on %s. error: %v\n", addr, err)
 		return
 	}
 }
