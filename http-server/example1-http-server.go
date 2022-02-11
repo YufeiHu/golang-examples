@@ -15,6 +15,7 @@ import (
 
 const (
 	basePath = "/v1/demo"
+    serverShutdownTime = 10 * time.Second
 )
 
 type responseStruct struct {
@@ -90,7 +91,7 @@ func interruptableServe(parentCtx context.Context, listener net.Listener, server
 	go func() {
 		<-parentCtx.Done()
 
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 1 * time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), serverShutdownTime)
 		defer cancel()
 
 		if err := server.Shutdown(shutdownCtx); err != nil {
