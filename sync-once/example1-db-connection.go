@@ -1,8 +1,7 @@
 package main
 
 import (
-   "fmt"
-   "sync"
+    "sync"
 )
 
 type dbConnection struct {}
@@ -14,7 +13,7 @@ var (
 
 func GetConnection() *dbConnection {
    dbConnOnce.Do(func() {
-      conn = &DbConnection{}
+      conn = &dbConnection{}
    })
    return conn
 }
