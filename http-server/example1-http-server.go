@@ -10,7 +10,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-	"ztb-tester/internal/http_server"
 )
 
 const (
@@ -18,7 +17,6 @@ const (
 	serverShutdownTime = 200 * time.Millisecond
     
 	basePath = "/v1/demo"
-    serverShutdownTime = 10 * time.Second
 )
 
 type responseStruct struct {
@@ -121,7 +119,7 @@ func main() {
 		}
 	}(ctx)
 
-	handler := http_server.NewHttpHandler()
+	handler := NewHttpHandler()
 	server := http.Server{
 		Handler: handler,
 	}
