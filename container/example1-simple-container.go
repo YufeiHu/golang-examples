@@ -1,4 +1,4 @@
-// Copied from: https://www.youtube.com/watch?v=Utf-A4rODH8
+// Copied from: https://www.youtube.com/watch?v=Utf-A4rODH8 and https://gist.github.com/julz/c0017fa7a40de0543001
 // 
 // Simple container that shows:
 //   - UTS (Unix Timesharing System) namespace (i.e. hostname)
@@ -26,7 +26,7 @@ import (
 func main() {
   switch os.Args[1] {
   case "run":
-    run()
+    parent()
   case "child":
     child()
   default:
@@ -34,14 +34,14 @@ func main() {
   }
 }
 
-func run() {
+func parent() {
   cmd := exec.Command("/proc/self/exe", append([]string{"child"}, os.Args[2:]...)...)
+  cmd.SysProcAttr = &syscall.SysProcAttr{
+    Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS,
+  }
   cmd.Stdin = os.Stdin
   cmd.Stdout = os.Stdout
   cmd.Stderr = os.Stderr
-  cmd.SysProcAttr = &syscall.SysProcAttr {
-    Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID,
-  }
   
   must(cmd.Run())
 }
@@ -49,14 +49,16 @@ func run() {
 func child() {
   fmt.Printf("running %v as PID %d\n", os.Args[2:], os.Getpid())
   
-  cmd := exec.Command(os.Args[2], os.Args[3:]...)
-  cmd.Stdin = os.Stdin
-  cmd.Stdout = os.Stdout
-  cmd.Stderr = os.Stderr
+  must(syscall.Mount("rootfs", "rootfs", "", syscall.MS_BIND, ""))
+  must(os.MkdirAll("rootfs/oldrootfs", 0700))
+	must(syscall.PivotRoot("rootfs", "rootfs/oldrootfs"))
+	must(os.Chdir("/"))
+
+	cmd := exec.Command(os.Args[2], os.Args[3:]...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
   
-  must(syscall.Chroot("/home/rootfs"))
-  must(os.Chdir("/"))
-  must(syscall.Mount("proc", "proc", "proc", 0, ""))
   must(cmd.Run())
 }
 
