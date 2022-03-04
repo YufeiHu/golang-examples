@@ -1,4 +1,4 @@
-// copied from: https://www.youtube.com/watch?v=LvgVSSpwND8
+// Copied from: https://www.youtube.com/watch?v=LvgVSSpwND8
 
 func main() {
   jobs := make(chan int, 100)
